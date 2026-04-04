@@ -1,19 +1,31 @@
 const jwt = require('jsonwebtoken');
 
+// Auth middleware - verifies JWT token
 const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({ message: 'No token, authorization denied' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No token provided. Access denied.' });
   }
+
+  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    req.user = decoded; // { userId, username, role }
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
 
-module.exports = authMiddleware;
+// Admin middleware - must be used AFTER authMiddleware
+const adminMiddleware = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Access denied. Admin only.' });
+  }
+};
+
+module.exports = { authMiddleware, adminMiddleware };
