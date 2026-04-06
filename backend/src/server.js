@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
+const adminrouter = require('./routes/admin');
+const locationRouter = require('./routes/location');
 const { attachLocationWebSocket } = require('./sockets/locationSocket');
 
 dotenv.config();
@@ -17,6 +19,13 @@ attachLocationWebSocket(server);
 app.use(cors());
 app.use(express.json());
 
+
+
+app.use(cors({
+  origin: "http://localhost:5173", // or your frontend URL
+  credentials: true
+}));
+
 // Root route
 app.get("/", (req, res) => {
   res.send("API is running");
@@ -24,6 +33,8 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminrouter);
+app.use('/api/location', locationRouter);
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
@@ -31,6 +42,15 @@ mongoose.connect(process.env.MONGO_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 const PORT = process.env.PORT || 5000;
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Stop the other process or set PORT in .env.`);
+  } else {
+    console.error('Server failed to start:', err.message);
+  }
+  process.exit(1);
+});
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
