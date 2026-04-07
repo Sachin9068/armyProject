@@ -7,53 +7,59 @@ import { locationSocket } from '../services/socket';
 
 const EmployeeDashboard = () => {
   const { user, token } = useAuth();
-  const [locationStatus, setLocationStatus] = useState('Not sharing');
-  const [watchId, setWatchId] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('Starting...');
+  const [sharing, setSharing] = useState(true);
   const [currentLocation, setCurrentLocation] = useState(null);
 
   useEffect(() => {
-    // Connect WebSocket for location sharing
+    if (!token) return undefined;
+    let intervalId = null;
+
     locationSocket.connect(token, () => {}, () => {});
+
+    const publishLocation = () => {
+      if (!sharing) return;
+      if (!navigator.geolocation) {
+        setLocationStatus('Geolocation not supported');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setCurrentLocation({ lat: latitude, lng: longitude });
+          try {
+            await api.post('/location/update', { latitude, longitude });
+          } catch (err) {
+            console.error('REST location update failed', err);
+          }
+          locationSocket.sendLocation(latitude, longitude);
+          setLocationStatus('Live sharing active (every 5s)');
+        },
+        (err) => {
+          console.error(err);
+          setLocationStatus('Error accessing location');
+        },
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+      );
+    };
+
+    publishLocation();
+    intervalId = window.setInterval(publishLocation, 20000);
+
     return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (intervalId) window.clearInterval(intervalId);
       locationSocket.disconnect();
     };
-  }, []);
+  }, [token, sharing]);
 
   const startSharing = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation not supported');
-      return;
-    }
-    const id = navigator.geolocation.watchPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        setCurrentLocation({ lat: latitude, lng: longitude });
-        // Send to REST API
-        try {
-          await api.post('/location/update', { latitude, longitude });
-        } catch (err) {
-          console.error('REST location update failed', err);
-        }
-        // Send via WebSocket
-        locationSocket.sendLocation(latitude, longitude);
-        setLocationStatus('Live sharing active');
-      },
-      (err) => {
-        console.error(err);
-        setLocationStatus('Error accessing location');
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-    );
-    setWatchId(id);
+    setSharing(true);
+    setLocationStatus('Starting...');
   };
 
   const stopSharing = () => {
-    if (watchId) {
-      navigator.geolocation.clearWatch(watchId);
-      setWatchId(null);
-      setLocationStatus('Stopped');
-    }
+    setSharing(false);
+    setLocationStatus('Stopped');
   };
 
   return (
@@ -73,14 +79,14 @@ const EmployeeDashboard = () => {
           <div className="flex space-x-4">
             <button
               onClick={startSharing}
-              disabled={watchId !== null}
+              disabled={sharing}
               className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
             >
-              Start Sharing Location
+              Start Sharing
             </button>
             <button
               onClick={stopSharing}
-              disabled={watchId === null}
+              disabled={!sharing}
               className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
             >
               Stop Sharing

@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../Moduls/User');
 const generateUsername = require('../utils/generateUsername');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware, hierarchyReadMiddleware } = require('../middleware/auth');
 const { createRHM,createBHM,createEmployee,getAllRHM,getAllBHM,getAllEmployees,getAdminDashboard,assignBHM,
  getLiveLocations,assignEmployee,getLocationHistory} = require("../controllers/adminController");
 
@@ -125,7 +125,7 @@ adminrouter.put('/users/:id', authMiddleware, adminMiddleware, async (req, res) 
 // ─────────────────────────────────────────────
 // DELETE /api/auth/admin/users/:id  — delete user (admin)
 // ─────────────────────────────────────────────
-adminrouter.delete('/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
+adminrouter.delete('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     // prevent admin from deleting themselves
     if (req.params.id === req.user.userId) {
@@ -155,11 +155,11 @@ adminrouter.post("/create-employee",authMiddleware,adminMiddleware,createEmploye
 //fetch into of RHM
 adminrouter.get("/rhm",authMiddleware,adminMiddleware,getAllRHM);
 
-//fetch info of BHM
-adminrouter.get("/bhm",authMiddleware,adminMiddleware,getAllBHM);
+//fetch info of BHM (admin sees all; RHM sees own BHMs; BHM sees own row only)
+adminrouter.get("/bhm", authMiddleware, hierarchyReadMiddleware, getAllBHM);
 
-//fetch into of employees
-adminrouter.get("/employees",authMiddleware,adminMiddleware,getAllEmployees);
+//fetch info of employees (scoped by role)
+adminrouter.get("/employees", authMiddleware, hierarchyReadMiddleware, getAllEmployees);
 
 //admin dashboard
 adminrouter.get("/dashboard",authMiddleware,adminMiddleware,getAdminDashboard);

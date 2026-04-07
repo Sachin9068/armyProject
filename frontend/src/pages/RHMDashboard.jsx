@@ -2,10 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
 
 const RHMDashboard = () => {
-  const { user } = useAuth();
   const [bhms, setBhms] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,11 +18,8 @@ const RHMDashboard = () => {
         api.get('/admin/bhm'),
         api.get('/admin/employees')
       ]);
-      // Filter BHMs and Employees under this RHM
-      const myBhms = bhmRes.data.data.filter(b => b.rhmId?._id === user.id);
-      const myEmployees = empRes.data.data.filter(e => e.rhmId?._id === user.id);
-      setBhms(myBhms);
-      setEmployees(myEmployees);
+      setBhms(bhmRes.data.data || []);
+      setEmployees(empRes.data.data || []);
     } catch (err) {
       console.error(err);
     } finally {

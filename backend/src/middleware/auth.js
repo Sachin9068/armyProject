@@ -28,4 +28,13 @@ const adminMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware, adminMiddleware };
+// Read hierarchy lists (BHM / employees) for admin, RHM, and BHM dashboards
+const hierarchyReadMiddleware = (req, res, next) => {
+  const allowed = ['ADMIN', 'RHM', 'BHM'];
+  if (req.user && allowed.includes(req.user.role)) {
+    return next();
+  }
+  return res.status(403).json({ message: 'Access denied.' });
+};
+
+module.exports = { authMiddleware, adminMiddleware, hierarchyReadMiddleware };

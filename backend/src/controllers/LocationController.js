@@ -4,18 +4,21 @@ const User = require("../Moduls/User");
 const updateLocation = async (req, res) => {
   try {
     const { latitude, longitude, deviceInfo } = req.body;
-
     const userId = req.user.userId;
 
-    // 1. store history
-    await Location.create({
-      userId,
-      latitude,
-      longitude,
-      deviceInfo
-    });
+    // 1. override latest location (one user one record)
+    await Location.findOneAndUpdate(
+      { userId },   // find existing
+      {
+        latitude,
+        longitude,
+        deviceInfo,
+        timestamp: new Date()
+      },
+      { upsert: true, new: true } // create if not exists
+    );
 
-    // 2. update last location (fast access)
+    // 2. update last location in user
     await User.findByIdAndUpdate(userId, {
       lastLocation: {
         lat: latitude,
@@ -26,7 +29,7 @@ const updateLocation = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Location updated"
+      message: "Latest location updated"
     });
 
   } catch (error) {
@@ -37,6 +40,4 @@ const updateLocation = async (req, res) => {
   }
 };
 
-
-
-module.exports = {updateLocation}
+module.exports = { updateLocation };

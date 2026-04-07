@@ -16,15 +16,23 @@ const server = http.createServer(app);
 attachLocationWebSocket(server);
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 
-
-
-app.use(cors({
-  origin: "http://localhost:5173", // or your frontend URL
-  credentials: true
-}));
+const DEV_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || DEV_ORIGINS.includes(origin)) return cb(null, true);
+      cb(null, false);
+    },
+    credentials: true,
+  })
+);
 
 // Root route
 app.get("/", (req, res) => {

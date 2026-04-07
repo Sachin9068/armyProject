@@ -19,6 +19,19 @@ const createRHM = async (req, res) => {
       password
     } = req.body;
 
+    // validate fields
+    if (!username || !armyno || !rank || !name || !departmentTrade || !mobileno || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // 🚨 check if RHM already exists
+    const existingRHM = await User.findOne({ role: 'RHM' });
+    if (existingRHM) {
+      return res.status(400).json({
+        message: 'RHM already exists. Delete or remove current RHM before creating a new one.'
+      });
+    }
+
     // check duplicate armyno
     const existingUser = await User.findOne({ armyno });
     if (existingUser) {
@@ -29,6 +42,12 @@ const createRHM = async (req, res) => {
     const existingMobile = await User.findOne({ mobileno });
     if (existingMobile) {
       return res.status(400).json({ message: 'Mobile already exists' });
+    }
+
+    // check duplicate username
+    const existingUsername = await User.findOne({ username: username.trim() });
+    if (existingUsername) {
+      return res.status(400).json({ message: 'Username already exists' });
     }
 
     // create RHM
@@ -203,7 +222,6 @@ const createBHM = async (req, res) => {
 // };
 
 
-
 const createEmployee = async (req, res) => {
   try {
     const {
@@ -245,6 +263,13 @@ const createEmployee = async (req, res) => {
     if (existingMobile) {
       return res.status(400).json({
         message: "Mobile number already exists"
+      });
+    }
+
+    const existingUsername = await User.findOne({ username: username?.trim() });
+    if (existingUsername) {
+      return res.status(400).json({
+        message: "Username already exists"
       });
     }
 
@@ -305,8 +330,17 @@ const getAllRHM = async (req, res) => {
 
 const getAllBHM = async (req, res) => {
   try {
-    const bhms = await User.find({ role: "BHM" })
-      .populate("rhmId", "name armyno rank") // show parent RHM
+    let query = { role: "BHM" };
+    if (req.user.role === "RHM") {
+      query.rhmId = req.user.userId;
+    } else if (req.user.role === "BHM") {
+      query._id = req.user.userId;
+    } else if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const bhms = await User.find(query)
+      .populate("rhmId", "name armyno rank")
       .select("-password")
       .sort({ createdAt: -1 });
 
@@ -327,7 +361,16 @@ const getAllBHM = async (req, res) => {
 
 const getAllEmployees = async (req, res) => {
   try {
-    const employees = await User.find({ role: "EMPLOYEE" })
+    let query = { role: "EMPLOYEE" };
+    if (req.user.role === "RHM") {
+      query.rhmId = req.user.userId;
+    } else if (req.user.role === "BHM") {
+      query.bhmId = req.user.userId;
+    } else if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const employees = await User.find(query)
       .populate("rhmId", "name armyno rank")
       .populate("bhmId", "name armyno rank")
       .select("-password")
@@ -477,7 +520,8 @@ const getLiveLocations = async (req, res) => {
     })
       .select("name armyno lastLocation rhmId bhmId")
       .populate("rhmId", "name")
-      .populate("bhmId", "name");
+      .populate("bhmId", "name")
+      .sort({ "lastLocation.updatedAt": -1 }); // NEW
 
     res.json({
       success: true,
@@ -494,13 +538,11 @@ const getLocationHistory = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const history = await Location.find({ userId })
-      .sort({ timestamp: -1 })
-      .limit(100);
+    const location = await Location.findOne({ userId });
 
     res.json({
       success: true,
-      data: history
+      data: location ? [location] : []
     });
 
   } catch (error) {

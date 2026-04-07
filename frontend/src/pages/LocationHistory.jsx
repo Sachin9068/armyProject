@@ -3,9 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import MapComponent from '../components/MapComponent';
+import { useAuth } from '../context/AuthContext';
+import { locationSocket } from '../services/socket';
 
 const LocationHistory = () => {
   const { userId } = useParams();
+  const { token } = useAuth();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
@@ -13,6 +16,32 @@ const LocationHistory = () => {
   useEffect(() => {
     fetchHistory();
   }, [userId]);
+
+  useEffect(() => {
+    if (!token || !userId) return undefined;
+
+    const handleLocation = (data) => {
+      if (data?.userId !== userId || typeof data.lat !== 'number' || typeof data.lng !== 'number') return;
+      const ts = data.updatedAt || Date.now();
+      const liveRow = {
+        _id: `live-${ts}`,
+        latitude: data.lat,
+        longitude: data.lng,
+        timestamp: ts,
+      };
+      setHistory((prev) => [liveRow, ...prev].slice(0, 300));
+    };
+
+    locationSocket.connect(token, () => {}, () => {});
+    locationSocket.on('location', handleLocation);
+    locationSocket.sendSubscribe(userId);
+
+    return () => {
+      locationSocket.off('location', handleLocation);
+      locationSocket.sendUnsubscribe(userId);
+      locationSocket.disconnect();
+    };
+  }, [token, userId]);
 
   const fetchHistory = async () => {
     try {
@@ -31,8 +60,8 @@ const LocationHistory = () => {
     }
   };
 
-  const markers = history.map((loc, idx) => ({
-    id: idx,
+  const markers = history.map((loc) => ({
+    id: loc._id,
     name: `Location at ${new Date(loc.timestamp).toLocaleString()}`,
     lat: loc.latitude,
     lng: loc.longitude,
@@ -46,7 +75,13 @@ const LocationHistory = () => {
       <h1 className="text-2xl font-bold mb-2">Location History: {userName || userId}</h1>
       <p className="text-gray-600 mb-4">Total records: {history.length}</p>
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <MapComponent markers={markers} center={markers[0] ? [markers[0].lat, markers[0].lng] : [20.5937, 78.9629]} zoom={12} />
+        <MapComponent
+          markers={markers}
+          center={[20.5937, 78.9629]}
+          zoom={6}
+          followLatest
+          followZoom={14}
+        />
       </div>
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">

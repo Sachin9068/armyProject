@@ -15,17 +15,18 @@ import LocationHistory from './LocationHistory';
 const AdminDashboard = () => {
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/admin/overview" replace />} />
-        <Route path="/overview" element={<Overview />} />
-        <Route path="/rhm" element={<ManageRHM />} />
-        <Route path="/rhm/create" element={<CreateRHM />} />
-        <Route path="/bhm" element={<ManageBHM />} />
-        <Route path="/bhm/create" element={<CreateBHM />} />
-        <Route path="/employees" element={<ManageEmployees />} />
-        <Route path="/employees/create" element={<CreateEmployee />} />
-        <Route path="/live-map" element={<LiveMap />} />
-        <Route path="/location-history/:userId" element={<LocationHistory />} />
+      <Routes basename="/admin">
+        <Route index element={<Navigate to="overview" replace />} />
+        <Route path="overview" element={<Overview />} />
+        <Route path="rhm" element={<ManageRHM />} />
+        <Route path="rhm/create" element={<CreateRHM />} />
+        <Route path="bhm" element={<ManageBHM />} />
+        <Route path="bhm/create" element={<CreateBHM />} />
+        <Route path="employees" element={<ManageEmployees />} />
+        <Route path="employees/create" element={<CreateEmployee />} />
+        <Route path="live-map" element={<LiveMap />} />
+        <Route path="location-history/:userId" element={<LocationHistory />} />
+        <Route path="*" element={<Navigate to="overview" replace />} />
       </Routes>
     </Layout>
   );

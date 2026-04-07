@@ -1,7 +1,6 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
-import { locationSocket } from '../services/socket';
 
 const AuthContext = createContext();
 
@@ -18,13 +17,6 @@ export const AuthProvider = ({ children }) => {
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
       setToken(storedToken);
-      // Initialize WebSocket for non-admin? Actually admin connects separately
-      if (JSON.parse(storedUser).role !== 'ADMIN') {
-        locationSocket.connect(storedToken, () => {}, () => {});
-        locationSocket.on('location', (data) => {
-          // handle location updates globally if needed
-        });
-      }
     }
     setLoading(false);
   }, []);
@@ -36,17 +28,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     setToken(token);
-    
-    // Initialize WebSocket for non-admin roles
-    if (user.role !== 'ADMIN') {
-      locationSocket.connect(token, () => {}, () => {});
-      locationSocket.on('location', (data) => {});
-    }
     return user;
   };
 
   const logout = () => {
-    locationSocket.disconnect();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

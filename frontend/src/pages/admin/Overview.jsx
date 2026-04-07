@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 const Overview = () => {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     fetchDashboard();
@@ -17,14 +18,25 @@ const Overview = () => {
       setDashboard(res.data);
     } catch (err) {
       console.error(err);
+      setLoadError(err.response?.data?.message || 'Could not load dashboard');
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
+  if (loadError) {
+    return (
+      <div className="bg-red-50 text-red-800 p-4 rounded-lg">
+        {loadError}
+      </div>
+    );
+  }
+  if (!dashboard) {
+    return <div className="text-center py-10 text-gray-600">No data</div>;
+  }
 
-  const { stats, recentUsers, hierarchy, liveEmployees } = dashboard;
+  const { stats, recentUsers = [], hierarchy, liveEmployees = [] } = dashboard;
 
   return (
     <div className="space-y-6">
@@ -53,6 +65,32 @@ const Overview = () => {
           <p className="text-2xl font-bold">{stats.activeEmployees}</p>
         </div>
       </div>
+
+      {/* Hierarchy summary */}
+      {hierarchy && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold mb-3">RHM units</h2>
+            <ul className="text-sm space-y-1 text-gray-700">
+              {(hierarchy.rhmSummary || []).map((r) => (
+                <li key={r._id}>
+                  {r.name} · Army No {r.armyno} · BHM slots used: {r.bhmCount ?? 0}/4
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold mb-3">BHM units</h2>
+            <ul className="text-sm space-y-1 text-gray-700">
+              {(hierarchy.bhmSummary || []).map((b) => (
+                <li key={b._id}>
+                  {b.name} · Army No {b.armyno} · Employees: {b.employeeCount ?? 0}/150
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Recent Users */}
       <div className="bg-white rounded-lg shadow">

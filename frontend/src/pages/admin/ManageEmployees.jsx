@@ -18,7 +18,7 @@ const ManageEmployees = () => {
   const fetchEmployees = async () => {
     try {
       const res = await api.get('/admin/employees');
-      setEmployees(res.data.data);
+      setEmployees(res.data.data || []);
     } catch (err) {
       console.error(err);
     } finally {

@@ -17,3 +17,40 @@ body {
   width: 100%;
   z-index: 10;
 }
+
+.tracker-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tracker-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #64748b;
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.25);
+}
+
+.tracker-marker.is-live .tracker-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.65);
+  animation: tracker-pulse 1.2s infinite;
+}
+
+.tracker-marker.is-stale .tracker-dot {
+  background: #64748b;
+}
+
+@keyframes tracker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.65);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(22, 163, 74, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+  }
+}

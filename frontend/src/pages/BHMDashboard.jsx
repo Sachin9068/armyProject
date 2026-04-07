@@ -2,10 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
 
 const BHMDashboard = () => {
-  const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,8 +14,7 @@ const BHMDashboard = () => {
   const fetchEmployees = async () => {
     try {
       const res = await api.get('/admin/employees');
-      const myEmployees = res.data.data.filter(e => e.bhmId?._id === user.id);
-      setEmployees(myEmployees);
+      setEmployees(res.data.data || []);
     } catch (err) {
       console.error(err);
     } finally {
