@@ -16,9 +16,18 @@ class LocationSocket {
       if (onOpen && this.ws.readyState === WebSocket.OPEN) onOpen();
       return;
     }
-    const base =
-      import.meta.env.VITE_WS_URL;
-    const wsUrl = `${base}/ws/location?token=${token}`;
+    const base = import.meta.env.VITE_WS_URL;
+    if (!base) {
+      const missingUrlError = new Error('Missing VITE_WS_URL environment variable');
+      console.error(missingUrlError);
+      if (onError) onError(missingUrlError);
+      return;
+    }
+    const wsBase = base
+      .replace(/^http:\/\//, 'ws://')
+      .replace(/^https:\/\//, 'wss://');
+    const wsUrl = `${wsBase}/ws/location?token=${encodeURIComponent(token)}`;
+    console.log('Connecting WebSocket to', wsUrl);
     this.ws = new WebSocket(wsUrl);
     
     this.ws.onopen = () => {
@@ -45,12 +54,20 @@ class LocationSocket {
     };
     
     this.ws.onerror = (err) => {
-      console.error('WebSocket error', err);
+      console.error('WebSocket error', err, {
+        url: wsUrl,
+        readyState: this.ws && this.ws.readyState,
+      });
       if (onError) onError(err);
     };
     
-    this.ws.onclose = () => {
-      console.log('WebSocket disconnected');
+    this.ws.onclose = (event) => {
+      console.log('WebSocket disconnected', {
+        url: wsUrl,
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+      });
       this.ws = null;
       if (!this.manualClose && this.token) {
         this.reconnectTimer = setTimeout(() => {

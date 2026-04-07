@@ -72,12 +72,17 @@ function attachLocationWebSocket(server) {
   console.log('✅ Location WebSocket attached');
 
   wss.on('connection', (ws, req) => {
-    console.log('🔌 New WebSocket connection');
+    console.log('🔌 New WebSocket connection', {
+      reqUrl: req.url,
+      host: req.headers.host,
+      origin: req.headers.origin,
+    });
 
     let url;
     try {
       url = new URL(req.url, `http://${req.headers.host}`);
-    } catch {
+    } catch (err) {
+      console.error('WebSocket URL parse failed', err);
       ws.close();
       return;
     }
@@ -85,19 +90,22 @@ function attachLocationWebSocket(server) {
     const token = url.searchParams.get('token');
     const decoded = verifyToken(token);
 
-    // Temporarily disable token verification for testing
-    // if (!decoded || !decoded.userId) {
-    //   ws.send(JSON.stringify({
-    //     type: 'error',
-    //     message: 'Unauthorized'
-    //   }));
-    //   ws.close();
-    //   return;
-    // }
+    if (!decoded || !decoded.userId) {
+      console.error('WebSocket auth failed', {
+        tokenPresent: !!token,
+        tokenValue: token ? '[REDACTED]' : null,
+        decoded,
+      });
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Unauthorized'
+      }));
+      ws.close();
+      return;
+    }
 
-    // Use dummy values for testing
-    ws.userId = decoded ? String(decoded.userId) : 'test-user';
-    ws.role = decoded ? decoded.role : 'ADMIN';
+    ws.userId = String(decoded.userId);
+    ws.role = decoded.role;
     ws.subscribedTo = new Set();
 
     console.log(`✅ Authenticated ${ws.role} -> ${ws.userId}`);
@@ -225,8 +233,12 @@ function attachLocationWebSocket(server) {
       }
     });
 
-    ws.on('close', () => {
-      console.log(`❌ Disconnected ${ws.userId}`);
+    ws.on('error', (err) => {
+      console.error(`WebSocket client error for ${ws.userId || 'unknown user'}`, err);
+    });
+
+    ws.on('close', (code, reason) => {
+      console.log(`❌ Disconnected ${ws.userId} (code=${code}, reason=${reason.toString()})`);
       removeAllSubscriptions(ws);
     });
   });
